@@ -648,10 +648,10 @@
 											title="View array elements"
 										>
 											<span class="font-semibold"
-											>[{Array.isArray(log.server1_value)
+												>[{Array.isArray(log.server1_value)
 													? (log.server1_value as unknown[]).length
 													: 0} items]</span
-										>
+											>
 											<span class="truncate text-indigo-500/70 dark:text-indigo-400/70">
 												{formatValue(log.server1_value)}
 											</span>
@@ -674,10 +674,10 @@
 											title="View array elements"
 										>
 											<span class="font-semibold"
-											>[{Array.isArray(log.server2_value)
+												>[{Array.isArray(log.server2_value)
 													? (log.server2_value as unknown[]).length
 													: 0} items]</span
-										>
+											>
 											<span class="truncate text-indigo-500/70 dark:text-indigo-400/70">
 												{formatValue(log.server2_value)}
 											</span>
