@@ -142,33 +142,43 @@ export class GtfsStaticState {
 	sqlResultPageSize = $state(50);
 }
 
+export interface KeyLogEntry {
+	id: number;
+	request_id?: number | null;
+	timestamp: string;
+	endpoint: string;
+	key_path: string;
+	server1_value: unknown;
+	server2_value: unknown;
+	created_at: number;
+}
+
 export class LoggerState {
 	selectedEndpoint = $state('');
-	logs: Record<string, unknown>[] = $state([]);
+	logs = $state<KeyLogEntry[]>([]);
 	loading = $state(false);
 	totalCount = $state(0);
-	limit = $state(50);
-	timeRange = $state('24h');
+	limit = $state(100);
+	timeRange = $state<'live' | '1h' | '24h' | 'all'>('live');
 	filterMode = $state<'all' | 'match' | 'mismatch'>('all');
-
-	selectedLogId = $state<number | null>(null);
 
 	keyPaths = $state<string[]>([]);
 	selectedKeyPaths = $state(new SvelteSet<string>());
-	showDetailModal = $state(false);
-	syncedExpandedPaths = $state(new SvelteSet<string>());
+}
+
+export interface GtfsRtSnapshotEntry {
+	id: number;
+	timestamp: string;
+	data: string;
+	created_at: number;
 }
 
 export class GtfsRtLogState {
-	logs: Record<string, unknown>[] = $state([]);
+	snapshots = $state<GtfsRtSnapshotEntry[]>([]);
 	loading = $state(false);
-	selectedLogId = $state<number | null>(null);
-	startDate = $state('');
-	endDate = $state('');
-	limit = $state(50);
-
-	feedData: unknown = $state(null);
-	loadingDetail = $state(false);
+	limit = $state(100);
+	timeRange = $state<'live' | '1h' | '24h' | 'all'>('live');
+	totalSnapshots = $state<number | null>(null);
 }
 
 export const comparatorState = new ComparatorState();

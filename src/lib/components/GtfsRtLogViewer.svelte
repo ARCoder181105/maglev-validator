@@ -3,21 +3,10 @@
 	import ProtobufViewer from './ProtobufViewer.svelte';
 	import { fly, fade } from 'svelte/transition';
 	import { logState } from '$lib/logState.svelte';
+	import { gtfsRtLogState } from '$lib/panelState.svelte';
 
-	interface GtfsRtSnapshotEntry {
-		id: number;
-		timestamp: string;
-		data: string;
-		created_at: number;
-	}
-
-	let snapshots = $state<GtfsRtSnapshotEntry[]>([]);
-	let loading = $state(false);
 	let selectedSnapshotId = $state<number | null>(null);
 	let showDetail = $state(false);
-	let limit = $state(100);
-	let timeRange = $state<'live' | '1h' | '24h' | 'all'>('live');
-	let totalSnapshots = $state<number | null>(null);
 	let totalSnapshotsLoading = $state(false);
 
 	onMount(() => {
@@ -26,11 +15,8 @@
 
 	$effect(() => {
 		void logState.lastUpdated;
-		untrack(() => {
-			if (timeRange === 'live') {
-				fetchSnapshots(true);
-			}
-		});
+		if (gtfsRtLogState.timeRange !== 'live') return;
+		untrack(() => fetchSnapshots(true));
 	});
 
 	async function fetchTotalSnapshots() {
@@ -38,9 +24,9 @@
 		try {
 			const totalRes = await fetch('/api/gtfs-rt?type=snapshot&limit=0');
 			const totalData = await totalRes.json();
-			totalSnapshots = totalData.totalCount ?? totalData.total_snapshots ?? null;
+			gtfsRtLogState.totalSnapshots = totalData.totalCount ?? totalData.total_snapshots ?? null;
 		} catch (e) {
-			totalSnapshots = null;
+			gtfsRtLogState.totalSnapshots = null;
 			console.error(e);
 		} finally {
 			totalSnapshotsLoading = false;
@@ -48,44 +34,44 @@
 	}
 
 	async function fetchSnapshots(silent = false) {
-		if (!silent) loading = true;
+		if (!silent) gtfsRtLogState.loading = true;
 		try {
 			let url = `/api/gtfs-rt?type=snapshot`;
 			const now = new Date();
 			let since;
-			if (timeRange === 'live') {
-				url += `&limit=${limit}`;
-			} else if (timeRange !== 'all') {
-				if (timeRange === '1h') {
+			if (gtfsRtLogState.timeRange === 'live') {
+				url += `&limit=${gtfsRtLogState.limit}`;
+			} else if (gtfsRtLogState.timeRange !== 'all') {
+				if (gtfsRtLogState.timeRange === '1h') {
 					since = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
-				} else if (timeRange === '24h') {
+				} else if (gtfsRtLogState.timeRange === '24h') {
 					since = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
 				}
 				if (since) url += `&since=${encodeURIComponent(since)}`;
 				url += `&limit=1000`;
 			} else {
-				url += `&limit=${limit}`;
+				url += `&limit=${gtfsRtLogState.limit}`;
 			}
 			const res = await fetch(url);
 			const data = await res.json();
-			snapshots = data.snapshots || [];
+			gtfsRtLogState.snapshots = data.snapshots || [];
 			if (data.totalCount !== undefined) {
-				totalSnapshots = data.totalCount;
+				gtfsRtLogState.totalSnapshots = data.totalCount;
 			} else if (data.total_snapshots !== undefined) {
-				totalSnapshots = data.total_snapshots;
+				gtfsRtLogState.totalSnapshots = data.total_snapshots;
 			} else {
 				if (!totalSnapshotsLoading) fetchTotalSnapshots();
 			}
 		} catch (e) {
 			console.error('Failed to fetch GTFS-RT snapshots:', e);
 		} finally {
-			if (!silent) loading = false;
+			if (!silent) gtfsRtLogState.loading = false;
 		}
 	}
 
 	$effect(() => {
-		void limit;
-		void timeRange;
+		void gtfsRtLogState.limit;
+		void gtfsRtLogState.timeRange;
 		untrack(() => fetchSnapshots());
 	});
 
@@ -100,7 +86,7 @@
 	}
 
 	const selectedData = $derived.by(() => {
-		const snapshot = snapshots.find((s) => s.id === selectedSnapshotId);
+		const snapshot = gtfsRtLogState.snapshots.find((s) => s.id === selectedSnapshotId);
 		if (!snapshot) return null;
 		try {
 			return JSON.parse(snapshot.data);
@@ -114,7 +100,8 @@
 		if (!confirm('Are you sure you want to clear all snapshots?')) return;
 		try {
 			await fetch('/api/gtfs-rt?type=snapshot', { method: 'DELETE' });
-			snapshots = [];
+			gtfsRtLogState.snapshots = [];
+			gtfsRtLogState.totalSnapshots = 0;
 			selectedSnapshotId = null;
 		} catch (e) {
 			console.error('Failed to clear snapshots:', e);
@@ -148,10 +135,10 @@
 			>
 				{#if totalSnapshotsLoading}
 					Loading...
-				{:else if totalSnapshots !== null}
-					{totalSnapshots} total snapshots
+				{:else if gtfsRtLogState.totalSnapshots !== null}
+					{gtfsRtLogState.totalSnapshots} total snapshots
 				{:else}
-					{snapshots.length} snapshots
+					{gtfsRtLogState.snapshots.length} snapshots
 				{/if}
 			</span>
 		</div>
@@ -171,9 +158,9 @@
 					>
 						{#each ['live', '1h', '24h', 'all'] as range (range)}
 							<button
-								onclick={() => (timeRange = range as 'live' | '1h' | '24h' | 'all')}
+								onclick={() => (gtfsRtLogState.timeRange = range as 'live' | '1h' | '24h' | 'all')}
 								class="flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-all sm:flex-none
-                                       {timeRange === range
+                                       {gtfsRtLogState.timeRange === range
 									? 'bg-indigo-600 text-white shadow'
 									: 'text-gray-600 hover:bg-gray-200 dark:text-gray-300 dark:hover:bg-gray-700'}"
 							>
@@ -187,7 +174,7 @@
 							</button>
 						{/each}
 					</div>
-					{#if timeRange === 'live'}
+					{#if gtfsRtLogState.timeRange === 'live'}
 						<div
 							class="ml-2 flex items-center gap-1.5 text-xs font-medium whitespace-nowrap text-green-600 dark:text-green-400"
 						>
@@ -213,7 +200,7 @@
 				<input
 					id="limit-input"
 					type="number"
-					bind:value={limit}
+					bind:value={gtfsRtLogState.limit}
 					min="10"
 					max="1000"
 					class="w-full rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/30 focus:outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200"
@@ -223,7 +210,7 @@
 			<div class="flex items-end justify-end gap-3 sm:col-span-4 md:col-span-7">
 				<button
 					onclick={() => fetchSnapshots()}
-					disabled={loading}
+					disabled={gtfsRtLogState.loading}
 					class="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
 				>
 					Refresh
@@ -238,7 +225,7 @@
 		</div>
 	</div>
 
-	{#if snapshots.length === 0 && !loading}
+	{#if gtfsRtLogState.snapshots.length === 0 && !gtfsRtLogState.loading}
 		<div
 			class="rounded-xl border border-gray-200 bg-white p-16 text-center dark:border-gray-800 dark:bg-gray-900"
 		>
@@ -263,7 +250,7 @@
 		<div
 			class="relative h-[70vh] overflow-y-auto rounded-b-xl border border-t-0 border-gray-200 bg-white p-6 pt-8 shadow-md dark:border-gray-800 dark:bg-gray-900"
 		>
-			{#each snapshots as snapshot (snapshot.id)}
+			{#each gtfsRtLogState.snapshots as snapshot (snapshot.id)}
 				{@const data = JSON.parse(snapshot.data)}
 				<div class="group relative pb-4 last:pb-0">
 					<button
@@ -394,7 +381,9 @@
 					<div>
 						<h3 class="text-lg font-bold text-gray-900 dark:text-white">Snapshot Detail</h3>
 						<p class="text-xs text-indigo-500 dark:text-indigo-400">
-							{formatTimestamp(snapshots.find((s) => s.id === selectedSnapshotId)?.timestamp || '')}
+							{formatTimestamp(
+								gtfsRtLogState.snapshots.find((s) => s.id === selectedSnapshotId)?.timestamp || ''
+							)}
 						</p>
 					</div>
 				</div>

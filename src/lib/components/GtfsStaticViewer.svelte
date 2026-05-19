@@ -427,7 +427,7 @@
 		});
 	}
 
-	async function processZipFile(file: File | Blob, sourceUrl?: string) {
+	async function processZipFile(file: File | Blob) {
 		gtfsState.loading = true;
 		gtfsState.error = null;
 		gtfsState.gtfsFiles = [];

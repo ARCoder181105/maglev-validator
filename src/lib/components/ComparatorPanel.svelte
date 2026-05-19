@@ -38,10 +38,10 @@
 	function collectKeys(obj: unknown, keys: Set<string>, prefix = '') {
 		if (!obj || typeof obj !== 'object') return;
 		if (Array.isArray(obj)) {
-			obj.slice(0, 3).forEach((item, index) => {
-				const path = prefix ? `${prefix}.${index}` : `${index}`;
+			const path = prefix ? `${prefix}.*` : '*';
+			for (const item of obj) {
 				collectKeys(item, keys, path);
-			});
+			}
 		} else {
 			Object.keys(obj as Record<string, unknown>).forEach((key) => {
 				const fullPath = prefix ? `${prefix}.${key}` : key;
@@ -188,15 +188,29 @@
 	}
 
 	function getValueByPath(obj: unknown, path: string): unknown {
-		if (!obj || typeof obj !== 'object') return undefined;
 		const parts = path.split('.');
-		let current: unknown = obj;
-		for (const part of parts) {
+		function walk(current: unknown, idx: number): unknown {
+			if (idx >= parts.length) return current;
 			if (current === null || current === undefined) return undefined;
+			const part = parts[idx];
+
+			if (part === '*') {
+				if (!Array.isArray(current)) return undefined;
+				return current.map((item) => walk(item, idx + 1));
+			}
+
+			if (Array.isArray(current)) {
+				const numericIdx = Number(part);
+				if (Number.isInteger(numericIdx)) {
+					return walk(current[numericIdx], idx + 1);
+				}
+				return undefined;
+			}
+
 			if (typeof current !== 'object') return undefined;
-			current = (current as Record<string, unknown>)[part];
+			return walk((current as Record<string, unknown>)[part], idx + 1);
 		}
-		return current;
+		return walk(obj, 0);
 	}
 
 	async function logWatchedKeys(resp1: unknown, resp2: unknown) {
