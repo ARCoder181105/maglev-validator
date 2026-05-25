@@ -36,6 +36,14 @@
 	let chartTimeRange = $state<'30m' | '1h' | '2h' | '6h' | '24h' | 'all'>('all');
 	let chartLogs = $state<KeyLogEntry[]>([]);
 
+	const filteredLogs = $derived(
+		loggerState.logs.filter((log) => {
+			if (loggerState.filterMode === 'all') return true;
+			const match = valuesMatch(log.server1_value, log.server2_value);
+			return loggerState.filterMode === 'match' ? match : !match;
+		})
+	);
+
 	const trendByLogId = $derived.by(() => {
 		const map = new SvelteMap<
 			number,
@@ -253,21 +261,19 @@
 		}
 	}
 
-	const filteredLogs = $derived(
-		loggerState.logs.filter((log) => {
-			if (loggerState.filterMode === 'all') return true;
-			const match = valuesMatch(log.server1_value, log.server2_value);
-			return loggerState.filterMode === 'match' ? match : !match;
-		})
-	);
-
 	onMount(() => {
 		fetchLoggedEndpoints();
-		if (loggerState.selectedEndpoint) {
-			fetchKeyPaths(loggerState.selectedEndpoint);
-			fetchLogs(false);
+	});
+
+	$effect(() => {
+		void loggedEndpoints;
+		if (!loggerState.selectedEndpoint) {
+			if (comparatorState.selectedEndpoint) {
+				loggerState.selectedEndpoint = comparatorState.selectedEndpoint;
+			} else if (loggedEndpoints.length > 0) {
+				loggerState.selectedEndpoint = loggedEndpoints[0];
+			}
 		}
-		fetchCount();
 	});
 
 	$effect(() => {
@@ -293,15 +299,38 @@
 		});
 	});
 
+	let livePollTimer: ReturnType<typeof setInterval> | undefined = $state();
+
 	$effect(() => {
 		void logState.lastUpdated;
-		if (loggerState.timeRange !== 'live') return;
 		untrack(() => {
 			if (loggerState.selectedEndpoint) {
 				fetchLogs(true);
 				fetchCount();
 			}
 		});
+	});
+
+	$effect(() => {
+		if (loggerState.timeRange === 'live' && loggerState.selectedEndpoint) {
+			fetchLogs(true);
+			fetchCount();
+			livePollTimer = setInterval(() => {
+				fetchLogs(true);
+				fetchCount();
+			}, 1000);
+			return () => {
+				if (livePollTimer !== undefined) {
+					clearInterval(livePollTimer);
+					livePollTimer = undefined;
+				}
+			};
+		} else {
+			if (livePollTimer !== undefined) {
+				clearInterval(livePollTimer);
+				livePollTimer = undefined;
+			}
+		}
 	});
 
 	async function fetchLoggedEndpoints() {
@@ -392,6 +421,7 @@
 				: '/api/keylog';
 			await fetch(url, { method: 'DELETE' });
 			loggerState.logs = [];
+			chartLogs = [];
 			await fetchLoggedEndpoints();
 			await fetchCount();
 		} catch (e) {

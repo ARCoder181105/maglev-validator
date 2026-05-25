@@ -364,46 +364,51 @@
 					</div>
 				{/snippet}
 			</SplitPane>
-		{:else if activeTab === 'comparator'}
-			<ComparatorPanel />
-		{:else if activeTab === 'protobuf'}
-			<div class="h-full">
-				<ProtobufPanel />
+		{:else}
+			<div class="h-full {activeTab !== 'comparator' ? 'hidden' : ''}">
+				<ComparatorPanel />
 			</div>
-		{:else if activeTab === 'gtfs-static'}
-			<div class="h-full">
-				<GtfsStaticViewer />
-			</div>
-		{:else if activeTab === 'logger'}
-			<div class="flex h-full flex-col">
-				<div class="mb-6 flex shrink-0 justify-center">
-					<div class="inline-flex rounded-xl bg-gray-200/50 p-1 dark:bg-gray-800/50">
-						<button
-							onclick={() => (loggerSubTab = 'api')}
-							class="rounded-lg px-6 py-2 text-sm font-bold transition-all {loggerSubTab === 'api'
-								? 'bg-white text-green-600 shadow-sm dark:bg-gray-700 dark:text-green-400'
-								: 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}"
-						>
-							API Response Logs
-						</button>
-						<button
-							onclick={() => (loggerSubTab = 'gtfsrt')}
-							class="rounded-lg px-6 py-2 text-sm font-bold transition-all {loggerSubTab ===
-							'gtfsrt'
-								? 'bg-white text-green-600 shadow-sm dark:bg-gray-700 dark:text-green-400'
-								: 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}"
-						>
-							GTFS-RT Snapshots
-						</button>
-					</div>
+			<div class="h-full {activeTab !== 'protobuf' ? 'hidden' : ''}">
+				<div class="h-full">
+					<ProtobufPanel />
 				</div>
+			</div>
+			<div class="h-full {activeTab !== 'gtfs-static' ? 'hidden' : ''}">
+				<div class="h-full">
+					<GtfsStaticViewer />
+				</div>
+			</div>
+			<div class="h-full {activeTab !== 'logger' ? 'hidden' : ''}">
+				<div class="flex h-full flex-col">
+					<div class="mb-6 flex shrink-0 justify-center">
+						<div class="inline-flex rounded-xl bg-gray-200/50 p-1 dark:bg-gray-800/50">
+							<button
+								onclick={() => (loggerSubTab = 'api')}
+								class="rounded-lg px-6 py-2 text-sm font-bold transition-all {loggerSubTab === 'api'
+									? 'bg-white text-green-600 shadow-sm dark:bg-gray-700 dark:text-green-400'
+									: 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}"
+							>
+								API Response Logs
+							</button>
+							<button
+								onclick={() => (loggerSubTab = 'gtfsrt')}
+								class="rounded-lg px-6 py-2 text-sm font-bold transition-all {loggerSubTab ===
+								'gtfsrt'
+									? 'bg-white text-green-600 shadow-sm dark:bg-gray-700 dark:text-green-400'
+									: 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'}"
+							>
+								GTFS-RT Snapshots
+							</button>
+						</div>
+					</div>
 
-				<div class="min-h-0 flex-1">
-					{#if loggerSubTab === 'api'}
-						<KeyLogViewer />
-					{:else}
-						<GtfsRtLogViewer />
-					{/if}
+					<div class="min-h-0 flex-1">
+						{#if loggerSubTab === 'api'}
+							<KeyLogViewer />
+						{:else}
+							<GtfsRtLogViewer />
+						{/if}
+					</div>
 				</div>
 			</div>
 		{/if}
